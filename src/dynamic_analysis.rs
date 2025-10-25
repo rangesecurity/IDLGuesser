@@ -56,7 +56,7 @@ impl TestContextObject {
     }
 }
 
-pub fn extract_args(executable_data: &[u8], entrypoint: usize) -> Vec<ArgMeta> {
+pub(crate) fn extract_args(executable_data: &[u8], entrypoint: usize) -> Vec<ArgMeta> {
     let config = Config {
         enabled_sbpf_versions: SBPFVersion::V0..=SBPFVersion::V3,
         enable_instruction_tracing: true,

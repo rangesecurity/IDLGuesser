@@ -3,10 +3,12 @@ mod dynamic_analysis;
 mod idl;
 mod static_analysis;
 
+pub use idl::Idl;
+
 use anyhow::{anyhow, Result};
 use dynamic_analysis::extract_args;
 use dynamic_analysis::extract_types;
-use idl::{Idl, InstructionInfo, Metadata};
+use idl::{InstructionInfo, Metadata};
 use log::debug;
 use solana_sbpf::program::FunctionRegistry;
 use solana_sbpf::program::SBPFVersion;
@@ -42,7 +44,8 @@ pub fn reverse_engineer_idl(program_id_str: &str, executable_data: &[u8]) -> Res
 
     // 3. Run rbpf analysis
     // Run sbpf built-in analysis
-    let analysis = Analysis::from_executable(&executable).expect("Failed to analyze program");
+    let analysis = Analysis::from_executable(&executable)
+        .map_err(|e| anyhow!("Failed to analyze program: {e}"))?;
 
     // Get ptr to instruction mapping
     let (_program_vm_addr, program) = executable.get_text_bytes();

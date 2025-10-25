@@ -18,6 +18,7 @@ use solana_sbpf::{
 };
 use solana_sdk::{bpf_loader_upgradeable, hash::hash, pubkey::Pubkey, slot_history::Slot};
 use std::collections::{BTreeMap, BTreeSet, HashSet, VecDeque};
+use std::sync::Arc;
 
 const CONSTRAINT_MUT: i64 = 2000;
 const CONSTRAINT_SIGNER: i64 = 2002;
@@ -39,7 +40,7 @@ const BUILTIN_IXS: [&str; 7] = [
 
 type FunctionGraph = BTreeMap<usize, BTreeSet<usize>>;
 
-pub fn extract_ix_accounts(
+pub(crate) fn extract_ix_accounts(
     analysis: &Analysis,
     instructions: &[&ebpf::Insn],
     function_registry: &FunctionRegistry<usize>,
@@ -120,9 +121,7 @@ pub fn extract_ix_accounts(
                 let offset = lddw_inst.imm as usize & 0xffffffff;
                 let length = mov64_inst.imm as usize;
                 if offset + length > executable_data.len() {
-                    warn!(
-                        "Invalid offset and length for account name in extract_ix_accounts"
-                    );
+                    warn!("Invalid offset and length for account name in extract_ix_accounts");
                     continue;
                 }
                 let account_name =
@@ -224,7 +223,7 @@ pub fn is_anchor_program(executable_data: &[u8]) -> bool {
         .any(|window| window == sig)
 }
 
-pub fn load_executable(
+pub(crate) fn load_executable(
     executable_data: &[u8],
     program_id: &Pubkey,
 ) -> Result<Executable<InvokeContext<'static>>> {
@@ -263,7 +262,7 @@ pub fn load_executable(
     })
 }
 
-pub fn generate_call_graph(
+pub(crate) fn generate_call_graph(
     executable: &Executable<InvokeContext<'static>>,
     function_ranges: &BTreeMap<usize, (usize, usize)>,
     instructions: &BTreeMap<usize, ebpf::Insn>,
@@ -306,7 +305,7 @@ pub fn generate_call_graph(
     Ok((call_graph, reference_graph))
 }
 
-pub fn find_instruction_handlers(
+pub(crate) fn find_instruction_handlers(
     executable: &Executable<InvokeContext<'static>>,
     function_ranges: &BTreeMap<usize, (usize, usize)>,
     instructions: &BTreeMap<usize, ebpf::Insn>,

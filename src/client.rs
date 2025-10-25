@@ -10,12 +10,15 @@ use solana_sdk::{
 use std::io::Read;
 
 /// Create an RPC client.
-pub fn create_client(url: &str) -> RpcClient {
+pub(crate) fn create_client(url: &str) -> RpcClient {
     RpcClient::new_with_commitment(url.to_string(), CommitmentConfig::confirmed())
 }
 
 /// Retrieve the program's associated IDL account data and return the deserialized JSON data.
-pub fn get_idl_account(client: &RpcClient, program_id: &Pubkey) -> Result<serde_json::Value> {
+pub(crate) fn get_idl_account(
+    client: &RpcClient,
+    program_id: &Pubkey,
+) -> Result<serde_json::Value> {
     let account = client.get_account(&IdlAccount::address(program_id))?;
     if account.data.is_empty() {
         return Err(anyhow!(
@@ -36,7 +39,7 @@ pub fn get_idl_account(client: &RpcClient, program_id: &Pubkey) -> Result<serde_
 }
 
 /// Retrieve the program's executable bytes based on its program ID.
-pub fn get_executable(client: &RpcClient, program_id: &Pubkey) -> Result<Vec<u8>> {
+pub(crate) fn get_executable(client: &RpcClient, program_id: &Pubkey) -> Result<Vec<u8>> {
     let account = client.get_account(program_id)?;
     if account.owner == bpf_loader_upgradeable::id() {
         match account.state()? {
