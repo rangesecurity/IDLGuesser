@@ -1,25 +1,27 @@
 use anchor_lang::{
-    idl::IdlAccount, prelude::UpgradeableLoaderState, AnchorDeserialize, Discriminator,
+    idl::IdlAccount,
+    prelude::{Pubkey as Pk, UpgradeableLoaderState},
+    AnchorDeserialize, Discriminator,
 };
 use anyhow::{anyhow, Result};
 use solana_client::rpc_client::RpcClient;
-use solana_sdk::{
-    account_utils::StateMut, bpf_loader, bpf_loader_deprecated, bpf_loader_upgradeable,
-    commitment_config::CommitmentConfig, pubkey::Pubkey,
-};
+use solana_commitment_config::CommitmentConfig;
+use solana_pubkey::Pubkey;
+use solana_sdk::{account_utils::StateMut, bpf_loader, bpf_loader_deprecated};
+use solana_sdk_ids::bpf_loader_upgradeable;
 use std::io::Read;
 
 /// Create an RPC client.
-pub(crate) fn create_client(url: &str) -> RpcClient {
+pub fn create_client(url: &str) -> RpcClient {
     RpcClient::new_with_commitment(url.to_string(), CommitmentConfig::confirmed())
 }
 
 /// Retrieve the program's associated IDL account data and return the deserialized JSON data.
-pub(crate) fn get_idl_account(
-    client: &RpcClient,
-    program_id: &Pubkey,
-) -> Result<serde_json::Value> {
-    let account = client.get_account(&IdlAccount::address(program_id))?;
+pub fn get_idl_account(client: &RpcClient, program_id: &Pk) -> Result<serde_json::Value> {
+    let idl_account_bytes = IdlAccount::address(program_id).to_bytes();
+    let idl_account_address = Pubkey::new_from_array(idl_account_bytes);
+
+    let account = client.get_account(&idl_account_address)?;
     if account.data.is_empty() {
         return Err(anyhow!(
             "No IDL account found for program ID: {}",
@@ -39,13 +41,15 @@ pub(crate) fn get_idl_account(
 }
 
 /// Retrieve the program's executable bytes based on its program ID.
-pub(crate) fn get_executable(client: &RpcClient, program_id: &Pubkey) -> Result<Vec<u8>> {
+pub fn get_executable(client: &RpcClient, program_id: &Pubkey) -> Result<Vec<u8>> {
     let account = client.get_account(program_id)?;
     if account.owner == bpf_loader_upgradeable::id() {
         match account.state()? {
             UpgradeableLoaderState::Program {
                 programdata_address,
             } => {
+                let programdata_address_bytes = programdata_address.to_bytes();
+                let programdata_address = Pubkey::new_from_array(programdata_address_bytes);
                 let account = client
                     .get_account(&programdata_address)
                     .map_err(|_| anyhow!("Failed to get programdata account"))?;

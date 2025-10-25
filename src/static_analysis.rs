@@ -1,14 +1,14 @@
 use crate::idl::{AccountMeta, IDLAccount};
+use agave_syscalls::create_program_runtime_environment_v1;
+use anchor_lang::solana_program::bpf_loader_upgradeable;
 use anyhow::{anyhow, Result};
 use heck::ToSnakeCase;
 use log::{debug, warn};
-use solana_bpf_loader_program::{
-    load_program_from_bytes, syscalls::create_program_runtime_environment_v1,
-};
+use solana_bpf_loader_program::load_program_from_bytes;
+use solana_program_runtime::with_mock_invoke_context;
 use solana_program_runtime::{
     invoke_context::InvokeContext,
     loaded_programs::{LoadProgramMetrics, ProgramCacheEntryType},
-    with_mock_invoke_context,
 };
 use solana_sbpf::{
     ebpf,
@@ -16,9 +16,11 @@ use solana_sbpf::{
     program::{FunctionRegistry, SBPFVersion},
     static_analysis::Analysis,
 };
-use solana_sdk::{bpf_loader_upgradeable, hash::hash, pubkey::Pubkey, slot_history::Slot};
-use std::collections::{BTreeMap, BTreeSet, HashSet, VecDeque};
-use std::sync::Arc;
+use solana_sdk::{hash::hash, pubkey::Pubkey, slot_history::Slot};
+use std::{
+    collections::{BTreeMap, BTreeSet, HashSet, VecDeque},
+    sync::Arc,
+};
 
 const CONSTRAINT_MUT: i64 = 2000;
 const CONSTRAINT_SIGNER: i64 = 2002;
@@ -40,7 +42,7 @@ const BUILTIN_IXS: [&str; 7] = [
 
 type FunctionGraph = BTreeMap<usize, BTreeSet<usize>>;
 
-pub(crate) fn extract_ix_accounts(
+pub fn extract_ix_accounts(
     analysis: &Analysis,
     instructions: &[&ebpf::Insn],
     function_registry: &FunctionRegistry<usize>,
@@ -223,7 +225,7 @@ pub fn is_anchor_program(executable_data: &[u8]) -> bool {
         .any(|window| window == sig)
 }
 
-pub(crate) fn load_executable(
+pub fn load_executable(
     executable_data: &[u8],
     program_id: &Pubkey,
 ) -> Result<Executable<InvokeContext<'static>>> {
@@ -244,12 +246,14 @@ pub(crate) fn load_executable(
         ..Default::default()
     };
 
+    let bpf_loader_id = bpf_loader_upgradeable::id().to_bytes();
+    let bpf_loader_id = Pubkey::new_from_array(bpf_loader_id);
     // Load program
     load_program_from_bytes(
         invoke_context.get_log_collector(),
         &mut load_program_metrics,
         executable_data,
-        &bpf_loader_upgradeable::id(),
+        &bpf_loader_id,
         executable_data.len(),
         Slot::default(),
         Arc::new(program_runtime_environment),
@@ -262,7 +266,7 @@ pub(crate) fn load_executable(
     })
 }
 
-pub(crate) fn generate_call_graph(
+pub fn generate_call_graph(
     executable: &Executable<InvokeContext<'static>>,
     function_ranges: &BTreeMap<usize, (usize, usize)>,
     instructions: &BTreeMap<usize, ebpf::Insn>,
@@ -305,7 +309,7 @@ pub(crate) fn generate_call_graph(
     Ok((call_graph, reference_graph))
 }
 
-pub(crate) fn find_instruction_handlers(
+pub fn find_instruction_handlers(
     executable: &Executable<InvokeContext<'static>>,
     function_ranges: &BTreeMap<usize, (usize, usize)>,
     instructions: &BTreeMap<usize, ebpf::Insn>,
