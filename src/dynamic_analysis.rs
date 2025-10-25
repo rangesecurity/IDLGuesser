@@ -70,7 +70,7 @@ pub fn extract_args(executable_data: &[u8], entrypoint: usize) -> Vec<ArgMeta> {
 
     let mut hash = 0u64;
     let mut fields = vec![];
-    
+
     // TODO: handle vector
     for length in 0u64..1000 {
         let mut stack: AlignedMemory<{ HOST_ALIGN }> =
@@ -169,7 +169,7 @@ pub fn extract_types(
     for (account_name, &entrypoint) in deserializers {
         let mut hash = 0u64;
         let mut fields = vec![];
-        
+
         // TODO: handle vector
         for length in 0u64..1000 {
             let mut stack: AlignedMemory<{ HOST_ALIGN }> =
