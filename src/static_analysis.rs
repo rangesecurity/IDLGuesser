@@ -1,6 +1,5 @@
 use crate::idl::{AccountMeta, IDLAccount};
 use agave_syscalls::create_program_runtime_environment_v1;
-use anchor_lang::solana_program::bpf_loader_upgradeable;
 use anyhow::{anyhow, Result};
 use heck::ToSnakeCase;
 use log::{debug, warn};
@@ -21,6 +20,11 @@ use std::{
     collections::{BTreeMap, BTreeSet, HashSet, VecDeque},
     sync::Arc,
 };
+
+const BPFLOADER_ID: Pubkey = Pubkey::new_from_array([
+    2, 168, 246, 145, 78, 136, 161, 176, 226, 16, 21, 62, 247, 99, 174, 43, 0, 194, 185, 61, 22,
+    193, 36, 210, 192, 83, 122, 16, 4, 128, 0, 0,
+]);
 
 const CONSTRAINT_MUT: i64 = 2000;
 const CONSTRAINT_SIGNER: i64 = 2002;
@@ -246,14 +250,12 @@ pub fn load_executable(
         ..Default::default()
     };
 
-    let bpf_loader_id = bpf_loader_upgradeable::id().to_bytes();
-    let bpf_loader_id = Pubkey::new_from_array(bpf_loader_id);
     // Load program
     load_program_from_bytes(
         invoke_context.get_log_collector(),
         &mut load_program_metrics,
         executable_data,
-        &bpf_loader_id,
+        &BPFLOADER_ID,
         executable_data.len(),
         Slot::default(),
         Arc::new(program_runtime_environment),
