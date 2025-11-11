@@ -126,12 +126,17 @@ pub fn extract_ix_accounts(
                 // Recover account name from error message
                 let offset = lddw_inst.imm as usize & 0xffffffff;
                 let length = mov64_inst.imm as usize;
-                if offset + length > executable_data.len() {
-                    warn!("Invalid offset and length for account name in extract_ix_accounts");
-                    continue;
-                }
+
+                let end = match offset.checked_add(length) {
+                    Some(end) if end <= executable_data.len() => end,
+                    _ => {
+                        warn!("Invalid offset and length for account name in extract_ix_accounts");
+                        continue;
+                    }
+                };
+
                 let account_name =
-                    String::from_utf8_lossy(&executable_data[offset..offset + length]).to_string();
+                    String::from_utf8_lossy(&executable_data[offset..end]).to_string();
 
                 if !accounts.contains(&account_name) {
                     debug!("    {} {}", child_node.label, account_name);
@@ -372,8 +377,15 @@ pub fn find_instruction_handlers(
 
                     let offset = (lddw_inst.imm as usize) & 0xffffffff;
                     let length = mov64_inst.imm as usize;
-                    let sollog_str =
-                        String::from_utf8_lossy(&executable_data[offset..offset + length]);
+
+                    let end = match offset.checked_add(length) {
+                        Some(end) if end <= executable_data.len() => end,
+                        _ => {
+                            warn!("Invalid offset and length for sollog string in find_instruction_handlers");
+                            continue;
+                        }
+                    };
+                    let sollog_str = String::from_utf8_lossy(&executable_data[offset..end]);
 
                     let sig = "Instruction: ";
 
@@ -451,10 +463,12 @@ pub fn extract_accounts(
             }
         }
         if flag && account_name_offset.is_some() && account_name_length.is_some() {
-            let account_name = String::from_utf8_lossy(
-                &executable_data[account_name_offset.unwrap()
-                    ..account_name_offset.unwrap() + account_name_length.unwrap()],
-            );
+            let offset = account_name_offset.unwrap();
+            let length = account_name_length.unwrap();
+            let end = offset
+                .checked_add(length)
+                .expect("offset+length already validated");
+            let account_name = String::from_utf8_lossy(&executable_data[offset..end]);
             if account_name == "IdlAccount" {
                 continue;
             }
@@ -530,12 +544,15 @@ pub fn find_account_deserializer(
 
                         let offset = (lddw_inst.imm as usize) & 0xffffffff;
                         let length = mov64_inst.imm as usize;
-                        if offset + length > executable_data.len() {
-                            warn!("Invalid offset and length for account name");
-                            continue;
-                        }
-                        let account_name =
-                            String::from_utf8_lossy(&executable_data[offset..offset + length]);
+                        let end = match offset.checked_add(length) {
+                            Some(end) if end <= executable_data.len() => end,
+                            _ => {
+                                warn!("Invalid offset and length for account name in find_account_deserializer");
+                                continue;
+                            }
+                        };
+
+                        let account_name = String::from_utf8_lossy(&executable_data[offset..end]);
                         let should_skip = if account_name == "IdlAccount" {
                             true
                         } else {
